@@ -14,6 +14,13 @@
 #include <sys/ppu_thread.h>
 #include <vsh/stdc.h>
 
+constexpr int MAIN_THREAD_PRIORITY = 1069;
+constexpr int MAIN_THREAD_STACK_SIZE = 1536;
+constexpr int STOP_THREAD_PRIORITY = 2814;
+constexpr int STOP_THREAD_STACK_SIZE = 1024;
+constexpr int SLEEP_TIME = 1337;
+constexpr int PLUGIN_FINDING_SLEEP_TIME = 1000;
+
 SYS_MODULE_INFO(Akari, 0, BUILD_VERSION_MAJOR, BUILD_VERSION_MINOR);
 SYS_MODULE_START(module_start);
 SYS_MODULE_STOP(module_stop);
@@ -28,7 +35,7 @@ int module_start(size_t args, const void* argp)
     sys_ppu_thread_create(&gMainPpuThreadId, [](uint64_t arg) -> void
     {
         // Wait until the explore_plugin is found
-        do Timers::Sleep(1000); while (!paf::View::Find("explore_plugin"));
+        do Timers::Sleep(PLUGIN_FINDING_SLEEP_TIME); while (!paf::View::Find("explore_plugin"));
 
         stdc::printf(BUILD_STRING "\n");
 
@@ -46,7 +53,7 @@ int module_start(size_t args, const void* argp)
 
         sys_ppu_thread_exit(0);
     },
-    0, 1069, 1536, SYS_PPU_THREAD_CREATE_JOINABLE, "Akari::module_start");
+    0, MAIN_THREAD_PRIORITY, MAIN_THREAD_STACK_SIZE, SYS_PPU_THREAD_CREATE_JOINABLE, "Akari::module_start");
 
     Syscall::_sys_ppu_thread_exit(0);
     return 0;
@@ -56,7 +63,7 @@ int module_start(size_t args, const void* argp)
 int module_stop(size_t args, const void* argp)
 {
     sys_ppu_thread_t stopPpuThreadId;
-    int ret = sys_ppu_thread_create(&stopPpuThreadId, [](uint64_t arg) -> void
+    sys_ppu_thread_create(&stopPpuThreadId, [](uint64_t arg) -> void
     {
         // Remove the hooks
         RemoveHooks();
@@ -69,7 +76,7 @@ int module_stop(size_t args, const void* argp)
         g_Render.DestroyWidgets();
 
         sys_ppu_thread_yield();
-        Timers::Sleep(1337);
+        Timers::Sleep(SLEEP_TIME);
 
         // Join the main thread if it's valid
         if (gMainPpuThreadId != SYS_PPU_THREAD_ID_INVALID)
@@ -80,7 +87,7 @@ int module_stop(size_t args, const void* argp)
 
         sys_ppu_thread_exit(0);
     },
-    0, 2814, 1024, SYS_PPU_THREAD_CREATE_JOINABLE, "Akari::module_stop");
+    0, STOP_THREAD_PRIORITY, STOP_THREAD_STACK_SIZE, SYS_PPU_THREAD_CREATE_JOINABLE, "Akari::module_stop");
 
     // Join the stop thread if it's valid
     if (stopPpuThreadId != SYS_PPU_THREAD_ID_INVALID)
