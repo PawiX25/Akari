@@ -19,3 +19,4 @@ A fully customizable VSH menu with multiple functionalities.
 
 ## Credits
 - [@TheRouletteBoi](https://github.com/TheRouletteBoi "TheRouLetteBoi") for his helpful repositories, help and support
+- [@jordywastaken](https://github.com/jordywastaken "jordywastaken") for providing the original plugin, source code, and assets
