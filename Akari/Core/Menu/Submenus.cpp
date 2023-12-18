@@ -8,6 +8,19 @@
 #include "../../Utilities/System.h"
 #include <vsh/stdc.h>
 
+const int BUFFER_SIZE = 0x20;
+enum TemperatureTypes { CELSIUS, FAHRENHEIT, KELVIN };
+
+void displayMessage(const std::string& message) {
+	 vsh::ShowButtonNavigationMessage(message.c_str());
+}
+
+void shutdownAction(int shutdownType) {
+	 File::DeleteFile("/dev_hdd0/tmp/turnoff");
+	 g_Config.Save();
+	 Syscall::sys_sm_shutdown(shutdownType);
+}
+
 void MainSubmenu()
 {
 	g_Menu.Title("Main menu");
@@ -33,30 +46,30 @@ void ConsoleManagerInfoSubmenu()
 	g_Menu.Title("Informations menu");
 	g_Menu.Option("Show menu version").Action([]()
 	{
-		vsh::ShowButtonNavigationMessage(BUILD_STRING);
+		displayMessage(BUILD_STRING);
 	});
 	g_Menu.Option("Show firmware").Action([]()
 	{
-		vsh::ShowButtonNavigationMessage(stdc::va("Firmware: %1.2f %s%s", ConsoleInfo::GetFirmwareVersion(), ConsoleInfo::GetFirmwareType().c_str(), g_Helpers.m_IsHen ? " HEN" : ""));
+		displayMessage(stdc::va("Firmware: %1.2f %s%s", ConsoleInfo::GetFirmwareVersion(), ConsoleInfo::GetFirmwareType().c_str(), g_Helpers.m_IsHen ? " HEN" : ""));
 	});
 	g_Menu.Option("Show console type").Action([]()
 	{
-		vsh::ShowButtonNavigationMessage(stdc::va("Console: %s", ConsoleInfo::GetFirmwareType().c_str()));
+		displayMessage(stdc::va("Console: %s", ConsoleInfo::GetFirmwareType().c_str()));
 	});
 	g_Menu.Option("Show temperature").Action([]()
 	{
-		wchar_t buffer[0x20];
+		wchar_t buffer[BUFFER_SIZE];
 
 		switch (g_Config.overlay.tempType)
 		{
-		case 0:
-			stdc::swprintf(buffer, 0x20, L"CPU: %.0f\u00B0C, GPU: %.0f\u00B0C", ConsoleInfo::GetTemperatureCelsius(0), ConsoleInfo::GetTemperatureCelsius(1));
+		case CELSIUS:
+			stdc::swprintf(buffer, BUFFER_SIZE, L"CPU: %.0f\u00B0C, GPU: %.0f\u00B0C", ConsoleInfo::GetTemperatureCelsius(0), ConsoleInfo::GetTemperatureCelsius(1));
 			break;
-		case 1:
-			stdc::swprintf(buffer, 0x20, L"CPU: %.0f\u00B0F, GPU: %.0f\u00B0F", ConsoleInfo::GetTemperatureFahrenheit(0), ConsoleInfo::GetTemperatureFahrenheit(1));
+		case FAHRENHEIT:
+			stdc::swprintf(buffer, BUFFER_SIZE, L"CPU: %.0f\u00B0F, GPU: %.0f\u00B0F", ConsoleInfo::GetTemperatureFahrenheit(0), ConsoleInfo::GetTemperatureFahrenheit(1));
 			break;
-		case 2:
-			stdc::swprintf(buffer, 0x20, L"CPU: %.0fK, GPU: %.0fK", ConsoleInfo::GetTemperatureKelvin(0), ConsoleInfo::GetTemperatureKelvin(1));
+		case KELVIN:
+			stdc::swprintf(buffer, BUFFER_SIZE, L"CPU: %.0fK, GPU: %.0fK", ConsoleInfo::GetTemperatureKelvin(0), ConsoleInfo::GetTemperatureKelvin(1));
 			break;
 		}
 
@@ -64,7 +77,7 @@ void ConsoleManagerInfoSubmenu()
 	});
 	g_Menu.Option("Show fan speed").Action([]()
 	{
-		vsh::ShowButtonNavigationMessage(stdc::va("Fan speed: %.0f%%", ConsoleInfo::GetFanSpeed()));
+		displayMessage(stdc::va("Fan speed: %.0f%%", ConsoleInfo::GetFanSpeed()));
 	});
 }
 
@@ -73,27 +86,19 @@ void ConsoleManagerPowerSubmenu()
 	g_Menu.Title("Power menu");
 	g_Menu.Option("Shutdown").Action([]()
 	{
-		File::DeleteFile("/dev_hdd0/tmp/turnoff");
-		g_Config.Save();
-		Syscall::sys_sm_shutdown(Syscall::sys_shutdown);
+		shutdownAction(Syscall::sys_shutdown);
 	});
 	g_Menu.Option("Soft reboot").Action([]()
 	{
-		File::DeleteFile("/dev_hdd0/tmp/turnoff");
-		g_Config.Save();
-		Syscall::sys_sm_shutdown(Syscall::sys_reboot);
+		shutdownAction(Syscall::sys_reboot);
 	});
 	g_Menu.Option("Hard reboot").Action([]()
 	{
-		File::DeleteFile("/dev_hdd0/tmp/turnoff");
-		g_Config.Save();
-		Syscall::sys_sm_shutdown(Syscall::sys_reboot | Syscall::sys_hard_shutdown);
+		shutdownAction(Syscall::sys_reboot | Syscall::sys_hard_shutdown);
 	});
 	g_Menu.Option("LV2 reboot").Action([]()
 	{
-		File::DeleteFile("/dev_hdd0/tmp/turnoff");
-		g_Config.Save();
-		Syscall::sys_sm_shutdown(Syscall::sys_load_lpar | Syscall::lpar_id_1 | Syscall::sys_reboot);
+		shutdownAction(Syscall::sys_load_lpar | Syscall::lpar_id_1 | Syscall::sys_reboot);
 	});
 }
 
@@ -103,36 +108,36 @@ void ConsoleManagerConsoleIdSubmenu()
 	g_Menu.Option("Show current idps").Action([]()
 	{
 		if (Syscall::sys_mapi_is_cobra_based())
-			vsh::ShowButtonNavigationMessage(stdc::va("Current idps: %s", ConsoleInfo::GetCurrentIdps().c_str()));
+		displayMessage(stdc::va("Current idps: %s", ConsoleInfo::GetCurrentIdps().c_str()));
 		else
-			vsh::ShowButtonNavigationMessage(L"Cobra need to be enabled in order to use this option");
+		displayMessage("Cobra need to be enabled in order to use this option");
 	});
 	g_Menu.Option("Show current psid").Action([]()
 	{
 		if (Syscall::sys_mapi_is_cobra_based())
-			vsh::ShowButtonNavigationMessage(stdc::va("Current psid: %s", ConsoleInfo::GetCurrentPsid().c_str()));
+		displayMessage(stdc::va("Current psid: %s", ConsoleInfo::GetCurrentPsid().c_str()));
 		else
-			vsh::ShowButtonNavigationMessage(L"Cobra need to be enabled in order to use this option");
+		displayMessage("Cobra need to be enabled in order to use this option");
 	});
 	g_Menu.Option("Randomize current idps").Action([]()
 	{
 		if (Syscall::sys_mapi_is_cobra_based())
 		{
-			ConsoleInfo::RandomizeIdps();
-			vsh::ShowButtonNavigationMessage(stdc::va("New idps: %s", ConsoleInfo::GetCurrentIdps().c_str()));
+		ConsoleInfo::RandomizeIdps();
+		displayMessage(stdc::va("New idps: %s", ConsoleInfo::GetCurrentIdps().c_str()));
 		}
 		else
-			vsh::ShowButtonNavigationMessage(L"Cobra need to be enabled in order to use this option");
+		displayMessage("Cobra need to be enabled in order to use this option");
 	});
 	g_Menu.Option("Randomize current psid").Action([]()
 	{
 		if (Syscall::sys_mapi_is_cobra_based())
 		{
-			ConsoleInfo::RandomizePsid();
-			vsh::ShowButtonNavigationMessage(stdc::va("New psid: %s", ConsoleInfo::GetCurrentPsid().c_str()));
+		ConsoleInfo::RandomizePsid();
+		displayMessage(stdc::va("New psid: %s", ConsoleInfo::GetCurrentPsid().c_str()));
 		}
 		else
-			vsh::ShowButtonNavigationMessage(L"Cobra need to be enabled in order to use this option");
+		displayMessage("Cobra need to be enabled in order to use this option");
 	});
 }
 
@@ -167,22 +172,22 @@ void ConsoleManagerBuzzerSubmenu()
 	g_Menu.Option("Single").Action([]() 
 	{ 
 		Syscall::sys_sm_ring_buzzer(Syscall::ring_buzzer_single);
-		vsh::ShowButtonNavigationMessage(L"Ring buzzer 'Single'"); 
+		displayMessage("Ring buzzer 'Single'"); 
 	});
 	g_Menu.Option("Double").Action([]() 
 	{ 
 		Syscall::sys_sm_ring_buzzer(Syscall::ring_buzzer_double); 
-		vsh::ShowButtonNavigationMessage(L"Ring buzzer 'Double'"); 
+		displayMessage("Ring buzzer 'Double'"); 
 	});
 	g_Menu.Option("Triple").Action([]() 
 	{ 
 		Syscall::sys_sm_ring_buzzer(Syscall::ring_buzzer_triple); 
-		vsh::ShowButtonNavigationMessage(L"Ring buzzer 'Triple'"); 
+		displayMessage("Ring buzzer 'Triple'"); 
 	});
 	g_Menu.Option("Continuous").Action([]() 
 	{ 
 		Syscall::sys_sm_ring_buzzer(Syscall::ring_buzzer_continuous); 
-		vsh::ShowButtonNavigationMessage(L"Ring buzzer 'Continuous'"); 
+		displayMessage("Ring buzzer 'Continuous'"); 
 	});
 }
 
@@ -192,12 +197,12 @@ void ConsoleManagerBDSubmenu()
 	g_Menu.Option("Eject disc").Action([]() 
 	{ 
 		Syscall::sys_storage_eject_insert(false); 
-		vsh::ShowButtonNavigationMessage(L"Ejecting disc"); 
+		displayMessage("Ejecting disc"); 
 	});
 	g_Menu.Option("Insert disc").Action([]() 
 	{ 
 		Syscall::sys_storage_eject_insert(true);
-		vsh::ShowButtonNavigationMessage(L"Inserting disc"); 
+		displayMessage("Inserting disc"); 
 	});
 }
 
@@ -259,10 +264,6 @@ void SettingsSubmenu()
 		"In (Expo)", "Out (Expo)", "In-out (Expo)",
 		"In (Circ)", "Out (Circ)", "In-out (Circ)",
 		"In (Back)", "Out (Back)", "In-out (Back)",
-		// it brokey
-		//"In (Circ)", "Out (Circ)", "In-out (Circ)",
-		//"In (Elastic)", "Out (Elastic)", "In-out (Elastic)",
-		//"In (Bounce)", "Out (Bounce)", "In-out (Bounce)"
 	};
 
 	g_Menu.Title("Settings menu");
@@ -293,16 +294,16 @@ void SettingsSubmenu()
 	g_Menu.Option("Save configuration").Action([]
 	{
 		g_Config.Save(); 
-		vsh::ShowButtonNavigationMessage(L"Configuration saved");
+		displayMessage("Configuration saved");
 	});
 	g_Menu.Option("Load configuration").Action([]
 	{ 
 		g_Config.Load(); 
-		vsh::ShowButtonNavigationMessage(L"Configuration loaded");
+		displayMessage("Configuration loaded");
 	});
 	g_Menu.Option("Reset configuration").Action([]
 	{
 		g_Config.Reset();
-		vsh::ShowButtonNavigationMessage(L"Configuration reset");
+		displayMessage("Configuration reset");
 	});
 }
